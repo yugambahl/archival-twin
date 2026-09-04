@@ -22,6 +22,12 @@ export interface FaceReadouts {
 
 type Pt = { x: number; y: number };
 
+export interface FaceLandmark3D {
+  x: number;
+  y: number;
+  z: number;
+}
+
 function d2(a: Pt, b: Pt) {
   return Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
 }
@@ -79,15 +85,159 @@ function computeReadouts(
   };
 }
 
+function drawMovieMask(
+  ctx: CanvasRenderingContext2D,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  progress = 1,
+) {
+  // The analysis view now renders the ML landmarks through FaceMask3D.
+  return;
+
+  const width = x1 - x0;
+  const height = y1 - y0;
+
+  const padX = width * 0.18;
+  const padY = height * 0.12;
+
+  const left = x0 - padX;
+  const right = x1 + padX;
+  const top = y0 - padY;
+  const bottom = y1 + padY * 0.8;
+  const centerX = (left + right) / 2;
+  const centerY = (top + bottom) / 2;
+  const rx = (right - left) * 0.52;
+  const ry = (bottom - top) * 0.54;
+  const t = performance.now() * 0.0015;
+
+  const visible = Math.max(0, Math.min(1, progress));
+  ctx.save();
+
+  const outerAlpha = 0.2 + visible * 0.8;
+  ctx.shadowBlur = 20;
+  ctx.shadowColor = "rgba(88, 219, 255, 0.95)";
+  ctx.lineWidth = 2.4;
+  ctx.strokeStyle = `rgba(140, 236, 255, ${outerAlpha})`;
+  ctx.fillStyle = `rgba(10, 20, 32, ${0.12 + visible * 0.18})`;
+  ctx.beginPath();
+  ctx.ellipse(centerX, centerY, rx, ry, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = `rgba(120, 220, 255, ${0.18 + visible * 0.55})`;
+  ctx.setLineDash([5, 8]);
+  ctx.beginPath();
+  ctx.ellipse(centerX, centerY, rx * 0.9, ry * 0.86, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  const meshPoints: Array<{ x: number; y: number }> = [];
+  const cols = 11;
+  const rows = 9;
+
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const nx = (col / (cols - 1)) * 2 - 1;
+      const ny = (row / (rows - 1)) * 2 - 1;
+      const dr = Math.sqrt(nx * nx + ny * ny);
+      const scale = dr > 1 ? 0 : 1 - dr * 0.35;
+      const px = centerX + nx * rx * 0.96 * scale;
+      const py = centerY + ny * ry * 0.95 * scale;
+      meshPoints.push({ x: px, y: py });
+    }
+  }
+
+  const buildCount = Math.max(6, Math.floor(meshPoints.length * visible));
+  const pointAlpha = 0.35 + visible * 0.65;
+
+  for (let i = 0; i < buildCount; i++) {
+    const p = meshPoints[i];
+    const pulse = 1.2 + Math.sin(p.x * 0.08 + t) * 0.6;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, pulse, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(92, 210, 255, ${pointAlpha})`;
+    ctx.fill();
+
+    const neighbors = [
+      i + 1,
+      i + cols,
+      i + cols + 1,
+      i + cols - 1,
+    ].filter((idx) => idx >= 0 && idx < buildCount);
+
+    for (const nidx of neighbors) {
+      const q = meshPoints[nidx];
+      const dist = Math.hypot(q.x - p.x, q.y - p.y);
+      if (dist < rx * 0.38) {
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(q.x, q.y);
+        ctx.strokeStyle = `rgba(112, 210, 255, ${pointAlpha * 0.7})`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    }
+  }
+
+  if (visible > 0.18) {
+    ctx.strokeStyle = `rgba(120, 220, 255, ${0.28 + visible * 0.7})`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(centerX - rx * 0.45, centerY + ry * 0.14);
+    ctx.lineTo(centerX, centerY + ry * 0.26);
+    ctx.lineTo(centerX + rx * 0.45, centerY + ry * 0.14);
+    ctx.stroke();
+  }
+
+  const bracketInset = 18;
+  if (visible > 0.3) {
+    ctx.strokeStyle = `rgba(120, 220, 255, ${0.45 + visible * 0.55})`;
+    ctx.lineWidth = 2.2;
+
+    ctx.beginPath();
+    ctx.moveTo(left + bracketInset, top + bracketInset);
+    ctx.lineTo(left + bracketInset * 1.8, top + bracketInset);
+    ctx.lineTo(left + bracketInset, top + bracketInset * 1.8);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(right - bracketInset, top + bracketInset);
+    ctx.lineTo(right - bracketInset * 1.8, top + bracketInset);
+    ctx.lineTo(right - bracketInset, top + bracketInset * 1.8);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(left + bracketInset, bottom - bracketInset);
+    ctx.lineTo(left + bracketInset * 1.8, bottom - bracketInset);
+    ctx.lineTo(left + bracketInset, bottom - bracketInset * 1.8);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(right - bracketInset, bottom - bracketInset);
+    ctx.lineTo(right - bracketInset * 1.8, bottom - bracketInset);
+    ctx.lineTo(right - bracketInset, bottom - bracketInset * 1.8);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
 export function useFaceDetector(
   videoRef: React.RefObject<HTMLVideoElement | null>,
   canvasRef: React.RefObject<HTMLCanvasElement | null>,
-  paused = false
+  paused = false,
+  scanProgress = 1,
+  onLandmarks?: (landmarks: FaceLandmark3D[] | null) => void,
 ) {
   const [readouts, setReadouts] = useState<FaceReadouts | null>(null);
   const landmarkerRef = useRef<FaceLandmarker | null>(null);
   const pausedRef = useRef(paused);
+  const scanProgressRef = useRef(scanProgress);
   useEffect(() => { pausedRef.current = paused; }, [paused]);
+  useEffect(() => { scanProgressRef.current = scanProgress; }, [scanProgress]);
 
   useEffect(() => {
     let cancelled = false;
@@ -137,6 +287,7 @@ export function useFaceDetector(
             const result = landmarker.detectForVideo(video, performance.now());
             if (result.faceLandmarks.length > 0) {
               const lm = result.faceLandmarks[0]; // normalized [0,1]
+              onLandmarks?.(lm);
 
               // Bounding box from landmark extents
               let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -150,10 +301,13 @@ export function useFaceDetector(
               ctx.lineWidth = 2;
               ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
 
+              drawMovieMask(ctx, x0, y0, x1, y1, scanProgressRef.current);
+
               // Landmark-derived measurements
               const blendshapes = result.faceBlendshapes?.[0]?.categories ?? [];
               setReadouts(computeReadouts(lm, blendshapes));
             } else {
+              onLandmarks?.(null);
               setReadouts(null);
             }
           } catch {
@@ -171,7 +325,7 @@ export function useFaceDetector(
       cancelled = true;
       clearTimeout(timeoutId);
     };
-  }, [videoRef, canvasRef]);
+  }, [videoRef, canvasRef, onLandmarks]);
 
   return { readouts };
 }

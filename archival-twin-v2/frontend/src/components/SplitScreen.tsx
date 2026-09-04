@@ -13,6 +13,7 @@ interface Props {
   videoRef: RefObject<HTMLVideoElement | null>;
   cameraReady: boolean;
   cameraError: CameraError;
+  attachStream: (video: HTMLVideoElement | null) => void;
   matchState: MatchState;
   backendStatus: string;
   onCapture: () => void;
@@ -23,6 +24,7 @@ export default function SplitScreen({
   videoRef,
   cameraReady,
   cameraError,
+  attachStream,
   matchState,
   backendStatus,
   onCapture,
@@ -46,6 +48,7 @@ export default function SplitScreen({
         <VisitorPanel
           videoRef={videoRef}
           cameraReady={cameraReady}
+          attachStream={attachStream}
           snapshot={snapshot}
           showSnapshot={isMatched}
         />
@@ -83,7 +86,7 @@ export default function SplitScreen({
                 disabled={!cameraReady || isDegraded}
                 onClick={onCapture}
               >
-                FIND TWIN
+                SCAN SELF
               </button>
             </>
           )}

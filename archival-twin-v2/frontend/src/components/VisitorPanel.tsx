@@ -5,6 +5,7 @@ import { useFaceDetector, type FaceReadouts } from "../hooks/useFaceDetector";
 interface Props {
   videoRef: RefObject<HTMLVideoElement | null>;
   cameraReady: boolean;
+  attachStream: (video: HTMLVideoElement | null) => void;
   snapshot: string | null;
   showSnapshot: boolean;
 }
@@ -12,11 +13,18 @@ interface Props {
 export default function VisitorPanel({
   videoRef,
   cameraReady,
+  attachStream,
   snapshot,
   showSnapshot,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { readouts } = useFaceDetector(videoRef, canvasRef, showSnapshot);
+  // Setup is a plain camera check; the scan overlay belongs to analysis and results.
+  const { readouts } = useFaceDetector(
+    videoRef,
+    canvasRef,
+    !showSnapshot,
+    showSnapshot ? 1 : 0,
+  );
 
   // Freeze readouts at the moment of capture so they persist on the snapshot
   const frozenReadouts = useRef<FaceReadouts | null>(null);
@@ -30,7 +38,7 @@ export default function VisitorPanel({
   return (
     <div style={container}>
       <div style={videoWrap}>
-        <CameraCapture videoRef={videoRef} ready={cameraReady} />
+        <CameraCapture videoRef={videoRef} ready={cameraReady} attachStream={attachStream} />
 
         {showSnapshot && snapshot && (
           <img

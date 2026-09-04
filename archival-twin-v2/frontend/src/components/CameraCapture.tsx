@@ -1,11 +1,16 @@
-import { type RefObject } from "react";
+import { type RefObject, useEffect } from "react";
 
 interface Props {
   videoRef: RefObject<HTMLVideoElement | null>;
   ready: boolean;
+  attachStream?: (video: HTMLVideoElement | null) => void;
 }
 
-export default function CameraCapture({ videoRef, ready }: Props) {
+export default function CameraCapture({ videoRef, ready, attachStream }: Props) {
+  useEffect(() => {
+    attachStream?.(videoRef.current);
+  }, [attachStream, videoRef]);
+
   return (
     <video
       ref={videoRef}

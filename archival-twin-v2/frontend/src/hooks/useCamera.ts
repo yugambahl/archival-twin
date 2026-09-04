@@ -55,5 +55,11 @@ export function useCamera() {
     return canvas.toDataURL("image/jpeg", 0.85);
   }, []);
 
-  return { videoRef, ready, error, captureFrame };
+  const attachStream = useCallback((video: HTMLVideoElement | null) => {
+    if (video && streamRef.current && video.srcObject !== streamRef.current) {
+      video.srcObject = streamRef.current;
+    }
+  }, []);
+
+  return { videoRef, ready, error, captureFrame, attachStream };
 }
