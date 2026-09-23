@@ -6,6 +6,7 @@ import DisclosurePanel from "./DisclosurePanel";
 import ErrorOverlay from "./ErrorOverlay";
 import type { MatchState } from "../hooks/useMatch";
 import type { CameraError } from "../hooks/useCamera";
+import type { FaceReadouts } from "../hooks/useFaceDetector";
 import { IDLE_SUBTITLE, PROCESSING_TEXT } from "../content/disclosureText";
 import { type RefObject } from "react";
 
@@ -18,6 +19,7 @@ interface Props {
   backendStatus: string;
   onCapture: () => void;
   onReset: () => void;
+  analysisReadouts: FaceReadouts | null;
 }
 
 export default function SplitScreen({
@@ -29,6 +31,7 @@ export default function SplitScreen({
   backendStatus,
   onCapture,
   onReset,
+  analysisReadouts,
 }: Props) {
   const isDegraded = backendStatus === "degraded";
   const isUnreachable = backendStatus === "unreachable";
@@ -113,6 +116,17 @@ export default function SplitScreen({
         text={matchData?.disclosure_text ?? ""}
         visible={isMatched}
       />
+
+      {isMatched && analysisReadouts && (
+        <div style={analysisSummary}>
+          <span style={analysisSummaryHeading}>MODEL OBSERVATIONS</span>
+          <span>EXPRESSION: {analysisReadouts.expression}</span>
+          <span>JAW: {analysisReadouts.jawShape}</span>
+          <span>EYES: {analysisReadouts.eyeOpenness}</span>
+          <span>NOSE: {analysisReadouts.noseWidth}</span>
+          <span>MOUTH: {analysisReadouts.mouthWidth}</span>
+        </div>
+      )}
 
       {/* Camera error */}
       {cameraError && (
@@ -222,4 +236,29 @@ const resetBtn: React.CSSProperties = {
   padding: "8px 24px",
   borderColor: "var(--color-text-dim)",
   color: "var(--color-text-dim)",
+};
+
+const analysisSummary: React.CSSProperties = {
+  position: "absolute",
+  right: 18,
+  bottom: 18,
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "6px 14px",
+  maxWidth: "min(520px, 48vw)",
+  padding: "10px 14px",
+  background: "rgba(2, 12, 20, 0.88)",
+  border: "1px solid rgba(63, 207, 238, 0.34)",
+  color: "#85d8e7",
+  fontFamily: "var(--font-mono)",
+  fontSize: 9,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  zIndex: 12,
+};
+
+const analysisSummaryHeading: React.CSSProperties = {
+  width: "100%",
+  color: "#55e4fa",
+  letterSpacing: "0.14em",
 };

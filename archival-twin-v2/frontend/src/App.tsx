@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import SplitScreen from "./components/SplitScreen";
 import AnalysisScreen from "./components/AnalysisScreen";
+import AnalysisTerminal from "./components/AnalysisTerminal";
 import ArchivalVoicePanel from "./components/ArchivalVoicePanel";
 import { useCamera } from "./hooks/useCamera";
 import { useMatch } from "./hooks/useMatch";
 import { getHealth } from "./api/client";
+import type { FaceReadouts } from "./hooks/useFaceDetector";
 
 export default function App() {
   const {
@@ -18,6 +20,8 @@ export default function App() {
   const [backendStatus, setBackendStatus] = useState<string>("checking");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
+  const [isTerminal, setIsTerminal] = useState(false);
+  const [analysisReadouts, setAnalysisReadouts] = useState<FaceReadouts | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,13 +63,20 @@ export default function App() {
 
   const handleAnalysisCancel = useCallback(() => {
     setIsAnalyzing(false);
+    setIsTerminal(false);
     setScanProgress(0);
   }, []);
 
-  const handleFindMatch = useCallback(() => {
+  const handleAnalysisComplete = useCallback((readouts: FaceReadouts | null) => {
+    setAnalysisReadouts(readouts);
+    setIsAnalyzing(false);
+    setIsTerminal(true);
+  }, []);
+
+  const handleRunMatch = useCallback(() => {
     const frame = captureFrame();
     if (!frame) return;
-    setIsAnalyzing(false);
+    setIsTerminal(false);
     runMatch(frame);
   }, [captureFrame, runMatch]);
 
@@ -78,7 +89,21 @@ export default function App() {
         attachStream={attachStream}
         scanProgress={scanProgress}
         onCancel={handleAnalysisCancel}
-        onFindMatch={handleFindMatch}
+        onAnalysisComplete={handleAnalysisComplete}
+      />
+    );
+  }
+
+  if (isTerminal) {
+    return (
+      <AnalysisTerminal
+        videoRef={videoRef}
+        cameraReady={cameraReady}
+        cameraError={cameraError}
+        attachStream={attachStream}
+        readouts={analysisReadouts}
+        onCancel={() => setIsTerminal(false)}
+        onRunMatch={handleRunMatch}
       />
     );
   }
@@ -94,6 +119,7 @@ export default function App() {
         backendStatus={backendStatus}
         onCapture={handleScanStart}
         onReset={reset}
+        analysisReadouts={analysisReadouts}
       />
       <ArchivalVoicePanel />
     </>

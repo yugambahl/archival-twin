@@ -1,5 +1,5 @@
 import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
-import { useFaceDetector, type FaceLandmark3D } from "../hooks/useFaceDetector";
+import { useFaceDetector, type FaceLandmark3D, type FaceReadouts } from "../hooks/useFaceDetector";
 import type { CameraError } from "../hooks/useCamera";
 import CameraCapture from "./CameraCapture";
 import FaceMask3D from "./FaceMask3D";
@@ -11,7 +11,7 @@ interface Props {
   attachStream: (video: HTMLVideoElement | null) => void;
   scanProgress: number;
   onCancel: () => void;
-  onFindMatch: () => void;
+  onAnalysisComplete: (readouts: FaceReadouts | null) => void;
 }
 
 export default function AnalysisScreen({
@@ -21,15 +21,16 @@ export default function AnalysisScreen({
   attachStream,
   scanProgress,
   onCancel,
-  onFindMatch,
+  onAnalysisComplete,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [landmarks, setLandmarks] = useState<FaceLandmark3D[] | null>(null);
+  const [readouts, setReadouts] = useState<FaceReadouts | null>(null);
   const [videoSize, setVideoSize] = useState({ width: 0, height: 0 });
   const handleLandmarks = useCallback((next: FaceLandmark3D[] | null) => {
     setLandmarks(next);
   }, []);
-  useFaceDetector(videoRef, canvasRef, false, scanProgress, handleLandmarks);
+  useFaceDetector(videoRef, canvasRef, false, scanProgress, handleLandmarks, setReadouts);
 
   useEffect(() => {
     const updateVideoSize = () => {
@@ -84,7 +85,7 @@ export default function AnalysisScreen({
             opacity: scanProgress >= 1 && cameraReady ? 1 : 0.35,
           }}
           disabled={scanProgress < 1 || !cameraReady}
-          onClick={onFindMatch}
+          onClick={() => onAnalysisComplete(readouts)}
         >
           FIND MATCH
         </button>

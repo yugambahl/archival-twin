@@ -231,6 +231,7 @@ export function useFaceDetector(
   paused = false,
   scanProgress = 1,
   onLandmarks?: (landmarks: FaceLandmark3D[] | null) => void,
+  onReadouts?: (readouts: FaceReadouts | null) => void,
 ) {
   const [readouts, setReadouts] = useState<FaceReadouts | null>(null);
   const landmarkerRef = useRef<FaceLandmarker | null>(null);
@@ -305,10 +306,13 @@ export function useFaceDetector(
 
               // Landmark-derived measurements
               const blendshapes = result.faceBlendshapes?.[0]?.categories ?? [];
-              setReadouts(computeReadouts(lm, blendshapes));
+              const nextReadouts = computeReadouts(lm, blendshapes);
+              setReadouts(nextReadouts);
+              onReadouts?.(nextReadouts);
             } else {
               onLandmarks?.(null);
               setReadouts(null);
+              onReadouts?.(null);
             }
           } catch {
             // ignore per-frame errors
@@ -325,7 +329,7 @@ export function useFaceDetector(
       cancelled = true;
       clearTimeout(timeoutId);
     };
-  }, [videoRef, canvasRef, onLandmarks]);
+  }, [videoRef, canvasRef, onLandmarks, onReadouts]);
 
   return { readouts };
 }
